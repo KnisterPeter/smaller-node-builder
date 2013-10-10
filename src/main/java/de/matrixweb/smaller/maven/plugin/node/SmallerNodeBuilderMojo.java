@@ -6,6 +6,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -20,6 +22,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.fluent.Response;
+import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -27,6 +30,7 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.stringtemplate.v4.ST;
@@ -36,10 +40,16 @@ import de.matrixweb.smaller.maven.plugin.node.Descriptor.Version;
 /**
  * @author markusw
  */
-@Mojo(name = "smaller-node-builder", defaultPhase = LifecyclePhase.GENERATE_RESOURCES)
+@Mojo(name = "smaller-node-builder", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class SmallerNodeBuilderMojo extends AbstractMojo {
 
   private final ObjectMapper om = new ObjectMapper();
+
+  @Parameter(required = true, readonly = true, defaultValue = "${project}")
+  private MavenProject project;
+
+  @Parameter(required = true, readonly = true, defaultValue = "${basedir}")
+  private File basedir;
 
   /**
    * Defines the type of code the package could handle. Should be either js or
@@ -48,20 +58,17 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(required = true)
   private String type;
 
-  /**
-   * The package to create a smaller plugin for. This could be anything allowed
-   * by the npm specs (https://npmjs.org/doc/faq.html#What-is-a-package).<br>
-   * Note: Currently this could be a name or a name@version combination. Other
-   * possibility not implemented.
-   */
-  @Parameter(alias = "package", required = true)
-  private String packagePath;
+  @Parameter(required = true)
+  private String name;
+
+  @Parameter(required = true)
+  private List<String> packages;
 
   /**
    * The folder to store the package and its requirements. Defaults to
-   * ${basedir}/src/main/resources.
+   * ${basedir}/target/generated-resources/npm-modules.
    */
-  @Parameter(defaultValue = "${basedir}/src/main/resources")
+  @Parameter(defaultValue = "${basedir}/target/generated-resources/npm-modules")
   private File target;
 
   private File tempInstall;
@@ -79,7 +86,39 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(defaultValue = "false")
   private boolean forceUpdate;
 
-  private final NpmCache cache = new NpmCache();
+  private final NpmCache cache;
+
+  /**
+   * 
+   */
+  public SmallerNodeBuilderMojo() {
+    this.cache = new NpmCache(this.basedir);
+  }
+
+  /**
+   * @return the packages
+   */
+  public final List<String> getPackages() {
+    if (this.packages == null) {
+      this.packages = new ArrayList<String>();
+    }
+    return this.packages;
+  }
+
+  /**
+   * @param packages
+   *          the packages to set
+   */
+  public final void setPackages(final List<String> packages) {
+    this.packages = packages;
+  }
+
+  /**
+   * @param str
+   */
+  public final void addPackage(final String str) {
+    getPackages().add(str);
+  }
 
   /**
    * @see org.apache.maven.plugin.Mojo#execute()
@@ -87,26 +126,33 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
     try {
-      final Package pkg = new Package(this.packagePath);
-      if (pkg.requiresDownload()) {
-        this.tempInstall = File.createTempFile("smaller-node-builder-temp",
-            ".dir");
-        this.tempInstall.delete();
-        this.tempInstall.mkdirs();
-        try {
+      this.tempInstall = File.createTempFile("smaller-node-builder-temp", ".dir");
+      this.tempInstall.delete();
+      this.tempInstall.mkdirs();
+      try {
+        for (String pkgSpec : this.packages) {
+          getLog().info("Installing " + pkgSpec);
+          final Package pkg = new Package(pkgSpec);
           pkg.install(this.tempInstall, this.tempInstall);
-          FileUtils.copyDirectory(this.tempInstall,
-              new File(pkg.getPackageTarget(), "node_modules"));
-        } finally {
-          FileUtils.deleteDirectory(this.tempInstall);
+          FileUtils.copyDirectory(this.tempInstall, new File(getPackageTarget(), "node_modules"));
         }
+      } finally {
+        FileUtils.deleteDirectory(this.tempInstall);
       }
-      FileUtils.write(new File(pkg.getPackageTarget(), "index.js"),
-          new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl")))
-              .add("pkgName", pkg.name).add("script", this.script).render());
+      FileUtils.write(new File(getPackageTarget(), "index.js"),
+          new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl"))).add("script", this.script).render());
+
+      // this.project.addCompileSourceRoot(this.target.getAbsolutePath());
+      Resource resource = new Resource();
+      resource.setDirectory(this.target.getAbsolutePath());
+      this.project.addResource(resource);
     } catch (final IOException e) {
       throw new MojoExecutionException("Failed to connect to npm registry", e);
     }
+  }
+
+  private File getPackageTarget() {
+    return new File(this.target, this.name);
   }
 
   class Package {
@@ -136,20 +182,6 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
       this.version = version;
     }
 
-    File getPackageTarget() throws IOException {
-      String strVersion = this.version;
-      if ("".equals(strVersion)) {
-        strVersion = getDescriptor().getDistTags().getLatest();
-      }
-      return new File(SmallerNodeBuilderMojo.this.target, this.name + "-"
-          + strVersion);
-    }
-
-    boolean requiresDownload() throws IOException {
-      return SmallerNodeBuilderMojo.this.forceUpdate || "".equals(this.version)
-          || !getPackageTarget().exists();
-    }
-
     Descriptor getDescriptor() throws IOException {
       if (this.descriptor == null) {
         final String url = "http://registry.npmjs.org/" + this.name;
@@ -157,12 +189,10 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
         if (stream == null) {
           getLog().debug("Requesting " + url);
           final Response response = Request.Get(url).execute();
-          SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent()
-              .asStream());
+          SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent().asStream());
           stream = SmallerNodeBuilderMojo.this.cache.get(url);
         }
-        this.descriptor = SmallerNodeBuilderMojo.this.om.readValue(stream,
-            Descriptor.class);
+        this.descriptor = SmallerNodeBuilderMojo.this.om.readValue(stream, Descriptor.class);
       }
       return this.descriptor;
     }
@@ -173,8 +203,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
       if (in == null) {
         getLog().info("Downloading " + url);
         final Response response = Request.Get(url).execute();
-        SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent()
-            .asStream());
+        SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent().asStream());
         in = SmallerNodeBuilderMojo.this.cache.get(url);
       }
       return in;
@@ -196,44 +225,35 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
           IOUtils.closeQuietly(in);
         }
       } catch (final CompressorException e) {
-        throw new IOException("Failed to decompress " + this.name + '@'
-            + selectedVersion, e);
+        throw new IOException("Failed to decompress " + this.name + '@' + selectedVersion, e);
       } catch (final ArchiveException e) {
-        throw new IOException("Failed to decompress " + this.name + '@'
-            + selectedVersion, e);
+        throw new IOException("Failed to decompress " + this.name + '@' + selectedVersion, e);
       }
 
-      for (final Entry<String, String> dependency : ver.getDependencies()
-          .entrySet()) {
+      for (final Entry<String, String> dependency : ver.getDependencies().entrySet()) {
         final String pkgName = dependency.getKey();
         final String requiredVersion = dependency.getValue();
-        getLog().debug(
-            "Looking for " + pkgName + '@' + requiredVersion
-                + " in parent folders of " + pkgDir);
+        getLog().debug("Looking for " + pkgName + '@' + requiredVersion + " in parent folders of " + pkgDir);
         final String foundVersion = findInstalledVersion(root, pkgDir, pkgName);
-        if (foundVersion == null
-            || !new Range(requiredVersion).satisfies(ParsedVersion
-                .parse(foundVersion))) {
+        if (foundVersion == null || !new Range(requiredVersion).satisfies(ParsedVersion.parse(foundVersion))) {
           final Package depPkg = new Package(pkgName);
-          depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
-              .getVersions().keySet(), requiredVersion));
+          depPkg.setVersion(SemanticVersion
+              .getBestMatch(depPkg.getDescriptor().getVersions().keySet(), requiredVersion));
           depPkg.install(root, new File(pkgDir, "node_modules"));
         }
       }
     }
 
-    private String findInstalledVersion(final File root, final File dir,
-        final String pkgName) throws IOException {
+    private String findInstalledVersion(final File root, final File dir, final String pkgName) throws IOException {
       String version = null;
 
       final File nodeModulesDir = new File(dir, "node_modules");
       final File pkgDir = new File(nodeModulesDir, pkgName);
       if (pkgDir.exists()) {
         getLog().debug("  searching " + pkgDir + "...");
-        final Map<String, Object> map = SmallerNodeBuilderMojo.this.om
-            .readValue(new File(pkgDir, "package.json"),
-                new TypeReference<Map<String, Object>>() {
-                });
+        final Map<String, Object> map = SmallerNodeBuilderMojo.this.om.readValue(new File(pkgDir, "package.json"),
+            new TypeReference<Map<String, Object>>() {
+            });
         version = (String) map.get("version");
         getLog().debug("  found version " + version);
       } else if (!dir.getParentFile().equals(root)) {
@@ -249,12 +269,11 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
 
 class Extractor {
 
-  static void uncompress(final Log log, final InputStream in, final File target)
-      throws IOException, CompressorException, ArchiveException {
+  static void uncompress(final Log log, final InputStream in, final File target) throws IOException,
+      CompressorException, ArchiveException {
     final CompressorStreamFactory csf = new CompressorStreamFactory();
     csf.setDecompressConcatenated(true);
-    final CompressorInputStream cin = csf
-        .createCompressorInputStream(new BufferedInputStream(in));
+    final CompressorInputStream cin = csf.createCompressorInputStream(new BufferedInputStream(in));
     final File temp = File.createTempFile("smaller-npm", ".tar");
     try {
       FileUtils.copyInputStreamToFile(cin, temp);
@@ -276,9 +295,8 @@ class Extractor {
     }
   }
 
-  private static void extractEntry(final Log log, final File target,
-      final ArchiveInputStream ain, final ArchiveEntry entry)
-      throws IOException {
+  private static void extractEntry(final Log log, final File target, final ArchiveInputStream ain,
+      final ArchiveEntry entry) throws IOException {
     String name = entry.getName();
     if (name.startsWith("package")) {
       name = name.substring("package/".length());

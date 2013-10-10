@@ -14,8 +14,8 @@ class NpmCache {
 
   private final File base;
 
-  NpmCache() {
-    this.base = new File("target/npm-cache");
+  NpmCache(final File base) {
+    this.base = new File(base, "target/npm-cache");
     this.base.mkdirs();
   }
 
