@@ -6,21 +6,32 @@ A maven mojo to create a smaller bundle containing a npm-module
     <plugin>
       <groupId>de.matrixweb.smaller</groupId>
       <artifactId>smaller-node-builder-maven-plugin</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>1.0.0</version>
       <executions>
         <execution>
           <configuration>
             <!-- browserify is working on js -->
             <type>js</type>
+            <name>browserify-2.34.0</name>
             <!-- npm module to prepare for smaller -->
-            <package>browserify@2.33.1</package>
-            <!-- the script to call browserify with -->
+            <packages>
+              <package>browserify@2.34.0</package>
+              <package>through@2.3.4</package>
+            </packages>
+            <!-- the bridge script between smaller and browserify -->
             <script>
+              var browserify = require('browserify');
               var fs = require('fs');
-              var b = browserify();
-              b.add(command.path + '/main.js');
-              b.bundle().pipe(fs.createWriteStream('/tmp/min.js'));
-              return command.path + '/main.js';
+              var through = require('through');
+              var min = '';
+              browserify()
+                .add(command.path + '/' + command.in)
+                .bundle().pipe(through(function write(data) {
+                    min += data;
+                  }, function end() {
+                    fs.writeFileSync(command.out + '/output.js', min);
+                    done();
+                  }));
             </script>
           </configuration>
           <goals>
@@ -29,4 +40,3 @@ A maven mojo to create a smaller bundle containing a npm-module
         </execution>
       </executions>
     </plugin>
-
