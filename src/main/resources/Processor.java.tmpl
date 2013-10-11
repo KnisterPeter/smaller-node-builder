@@ -1,0 +1,55 @@
+package de.matrixweb.smaller.<lowername>;
+
+import java.io.IOException;
+import java.util.Map;
+
+import de.matrixweb.smaller.common.SmallerException;
+import de.matrixweb.smaller.nodejs.NodejsExecutor;
+import de.matrixweb.smaller.resource.Processor;
+import de.matrixweb.smaller.resource.Resource;
+import de.matrixweb.smaller.resource.Type;
+
+/**
+ *
+ */
+public class <uppername>Processor implements Processor {
+
+  private NodejsExecutor node;
+
+  /**
+   * @see de.matrixweb.smaller.resource.Processor#supportsType(de.matrixweb.smaller.resource.Type)
+   */
+  @Override
+  public boolean supportsType(final Type type) {
+    return type == Type.<uppertype>;
+  }
+
+  /**
+   * @see de.matrixweb.smaller.resource.Processor#execute(de.matrixweb.smaller.resource.Resource,
+   *      java.util.Map)
+   */
+  @Override
+  public Resource execute(final Resource resource, final Map\<String, String> options) throws IOException {
+    if (this.node == null) {
+      try {
+        this.node = new NodejsExecutor();
+        this.node.addModule(getClass(), "<nameVersion>");
+      } catch (final IOException e) {
+        throw new SmallerException("Failed to setup node for <name>", e);
+      }
+    }
+    return this.node.run(resource, options);
+  }
+
+  /**
+   * @see de.matrixweb.smaller.resource.Processor#dispose()
+   */
+  @Override
+  public void dispose() {
+    if (this.node != null) {
+      this.node.dispose();
+      this.node = null;
+    }
+  }
+
+}

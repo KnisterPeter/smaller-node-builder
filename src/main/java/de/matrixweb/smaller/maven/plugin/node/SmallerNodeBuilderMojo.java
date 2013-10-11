@@ -86,14 +86,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(defaultValue = "false")
   private boolean forceUpdate;
 
-  private final NpmCache cache;
-
-  /**
-   * 
-   */
-  public SmallerNodeBuilderMojo() {
-    this.cache = new NpmCache(this.basedir);
-  }
+  private NpmCache cache;
 
   /**
    * @return the packages
@@ -125,6 +118,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
    */
   @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
+    this.cache = new NpmCache(this.basedir);
     try {
       this.tempInstall = File.createTempFile("smaller-node-builder-temp", ".dir");
       this.tempInstall.delete();
@@ -142,7 +136,21 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
       FileUtils.write(new File(getPackageTarget(), "index.js"),
           new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl"))).add("script", this.script).render());
 
-      // this.project.addCompileSourceRoot(this.target.getAbsolutePath());
+      String[] nameParts = this.name.split("-", 2);
+      String lowername = nameParts[0].toLowerCase();
+      String uppername = nameParts[0].substring(0, 1).toUpperCase() + nameParts[0].substring(1).toLowerCase();
+      String nameVersion = this.name;
+      String uppertype = this.type.toUpperCase();
+      File classbase = new File(this.basedir, "target/generated-sources/npm-processor");
+      File classtarget = new File(classbase, "de/matrixweb/smaller/" + lowername);
+      classbase.mkdirs();
+      FileUtils.write(
+          new File(classtarget, uppername + "Processor.java"),
+          new ST(IOUtils.toString(getClass().getResource("/Processor.java.tmpl"))).add("lowername", lowername)
+              .add("uppername", uppername).add("name", nameParts[0]).add("nameVersion", nameVersion)
+              .add("uppertype", uppertype).render());
+
+      this.project.addCompileSourceRoot(classbase.getPath());
       Resource resource = new Resource();
       resource.setDirectory(this.target.getAbsolutePath());
       this.project.addResource(resource);
