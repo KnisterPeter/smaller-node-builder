@@ -58,6 +58,9 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(required = true)
   private String type;
 
+  @Parameter(defaultValue = "false")
+  private boolean merging;
+
   @Parameter(required = true)
   private String name;
 
@@ -120,38 +123,47 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   public void execute() throws MojoExecutionException, MojoFailureException {
     this.cache = new NpmCache(this.basedir);
     try {
-      this.tempInstall = File.createTempFile("smaller-node-builder-temp", ".dir");
+      this.tempInstall = File.createTempFile("smaller-node-builder-temp",
+          ".dir");
       this.tempInstall.delete();
       this.tempInstall.mkdirs();
       try {
-        for (String pkgSpec : this.packages) {
+        for (final String pkgSpec : this.packages) {
           getLog().info("Installing " + pkgSpec);
           final Package pkg = new Package(pkgSpec);
           pkg.install(this.tempInstall, this.tempInstall);
-          FileUtils.copyDirectory(this.tempInstall, new File(getPackageTarget(), "node_modules"));
+          FileUtils.copyDirectory(this.tempInstall, new File(
+              getPackageTarget(), "node_modules"));
         }
       } finally {
         FileUtils.deleteDirectory(this.tempInstall);
       }
       FileUtils.write(new File(getPackageTarget(), "index.js"),
-          new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl"))).add("script", this.script).render());
+          new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl")))
+              .add("script", this.script).render());
 
-      String[] nameParts = this.name.split("-", 2);
-      String lowername = nameParts[0].toLowerCase();
-      String uppername = nameParts[0].substring(0, 1).toUpperCase() + nameParts[0].substring(1).toLowerCase();
-      String nameVersion = this.name;
-      String uppertype = this.type.toUpperCase();
-      File classbase = new File(this.basedir, "target/generated-sources/npm-processor");
-      File classtarget = new File(classbase, "de/matrixweb/smaller/" + lowername);
+      final String[] nameParts = this.name.split("-", 2);
+      final String lowername = nameParts[0].toLowerCase();
+      final String uppername = nameParts[0].substring(0, 1).toUpperCase()
+          + nameParts[0].substring(1).toLowerCase();
+      final String nameVersion = this.name;
+      final String uppertype = this.type.toUpperCase();
+      final File classbase = new File(this.basedir,
+          "target/generated-sources/npm-processor");
+      final File classtarget = new File(classbase, "de/matrixweb/smaller/"
+          + lowername);
       classbase.mkdirs();
       FileUtils.write(
           new File(classtarget, uppername + "Processor.java"),
-          new ST(IOUtils.toString(getClass().getResource("/Processor.java.tmpl"))).add("lowername", lowername)
-              .add("uppername", uppername).add("name", nameParts[0]).add("nameVersion", nameVersion)
-              .add("uppertype", uppertype).render());
+          new ST(IOUtils.toString(getClass()
+              .getResource("/Processor.java.tmpl")))
+              .add("lowername", lowername).add("uppername", uppername)
+              .add("name", nameParts[0]).add("nameVersion", nameVersion)
+              .add("uppertype", uppertype).add("merging", this.merging)
+              .render());
 
       this.project.addCompileSourceRoot(classbase.getPath());
-      Resource resource = new Resource();
+      final Resource resource = new Resource();
       resource.setDirectory(this.target.getAbsolutePath());
       this.project.addResource(resource);
     } catch (final IOException e) {
@@ -197,10 +209,12 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
         if (stream == null) {
           getLog().debug("Requesting " + url);
           final Response response = Request.Get(url).execute();
-          SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent().asStream());
+          SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent()
+              .asStream());
           stream = SmallerNodeBuilderMojo.this.cache.get(url);
         }
-        this.descriptor = SmallerNodeBuilderMojo.this.om.readValue(stream, Descriptor.class);
+        this.descriptor = SmallerNodeBuilderMojo.this.om.readValue(stream,
+            Descriptor.class);
       }
       return this.descriptor;
     }
@@ -211,7 +225,8 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
       if (in == null) {
         getLog().info("Downloading " + url);
         final Response response = Request.Get(url).execute();
-        SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent().asStream());
+        SmallerNodeBuilderMojo.this.cache.put(url, response.returnContent()
+            .asStream());
         in = SmallerNodeBuilderMojo.this.cache.get(url);
       }
       return in;
@@ -233,35 +248,44 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
           IOUtils.closeQuietly(in);
         }
       } catch (final CompressorException e) {
-        throw new IOException("Failed to decompress " + this.name + '@' + selectedVersion, e);
+        throw new IOException("Failed to decompress " + this.name + '@'
+            + selectedVersion, e);
       } catch (final ArchiveException e) {
-        throw new IOException("Failed to decompress " + this.name + '@' + selectedVersion, e);
+        throw new IOException("Failed to decompress " + this.name + '@'
+            + selectedVersion, e);
       }
 
-      for (final Entry<String, String> dependency : ver.getDependencies().entrySet()) {
+      for (final Entry<String, String> dependency : ver.getDependencies()
+          .entrySet()) {
         final String pkgName = dependency.getKey();
         final String requiredVersion = dependency.getValue();
-        getLog().debug("Looking for " + pkgName + '@' + requiredVersion + " in parent folders of " + pkgDir);
+        getLog().debug(
+            "Looking for " + pkgName + '@' + requiredVersion
+                + " in parent folders of " + pkgDir);
         final String foundVersion = findInstalledVersion(root, pkgDir, pkgName);
-        if (foundVersion == null || !new Range(requiredVersion).satisfies(ParsedVersion.parse(foundVersion))) {
+        if (foundVersion == null
+            || !new Range(requiredVersion).satisfies(ParsedVersion
+                .parse(foundVersion))) {
           final Package depPkg = new Package(pkgName);
-          depPkg.setVersion(SemanticVersion
-              .getBestMatch(depPkg.getDescriptor().getVersions().keySet(), requiredVersion));
+          depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
+              .getVersions().keySet(), requiredVersion));
           depPkg.install(root, new File(pkgDir, "node_modules"));
         }
       }
     }
 
-    private String findInstalledVersion(final File root, final File dir, final String pkgName) throws IOException {
+    private String findInstalledVersion(final File root, final File dir,
+        final String pkgName) throws IOException {
       String version = null;
 
       final File nodeModulesDir = new File(dir, "node_modules");
       final File pkgDir = new File(nodeModulesDir, pkgName);
       if (pkgDir.exists()) {
         getLog().debug("  searching " + pkgDir + "...");
-        final Map<String, Object> map = SmallerNodeBuilderMojo.this.om.readValue(new File(pkgDir, "package.json"),
-            new TypeReference<Map<String, Object>>() {
-            });
+        final Map<String, Object> map = SmallerNodeBuilderMojo.this.om
+            .readValue(new File(pkgDir, "package.json"),
+                new TypeReference<Map<String, Object>>() {
+                });
         version = (String) map.get("version");
         getLog().debug("  found version " + version);
       } else if (!dir.getParentFile().equals(root)) {
@@ -277,11 +301,12 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
 
 class Extractor {
 
-  static void uncompress(final Log log, final InputStream in, final File target) throws IOException,
-      CompressorException, ArchiveException {
+  static void uncompress(final Log log, final InputStream in, final File target)
+      throws IOException, CompressorException, ArchiveException {
     final CompressorStreamFactory csf = new CompressorStreamFactory();
     csf.setDecompressConcatenated(true);
-    final CompressorInputStream cin = csf.createCompressorInputStream(new BufferedInputStream(in));
+    final CompressorInputStream cin = csf
+        .createCompressorInputStream(new BufferedInputStream(in));
     final File temp = File.createTempFile("smaller-npm", ".tar");
     try {
       FileUtils.copyInputStreamToFile(cin, temp);
@@ -303,8 +328,9 @@ class Extractor {
     }
   }
 
-  private static void extractEntry(final Log log, final File target, final ArchiveInputStream ain,
-      final ArchiveEntry entry) throws IOException {
+  private static void extractEntry(final Log log, final File target,
+      final ArchiveInputStream ain, final ArchiveEntry entry)
+      throws IOException {
     String name = entry.getName();
     if (name.startsWith("package")) {
       name = name.substring("package/".length());

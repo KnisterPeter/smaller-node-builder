@@ -5,7 +5,11 @@ import java.util.Map;
 
 import de.matrixweb.smaller.common.SmallerException;
 import de.matrixweb.smaller.nodejs.NodejsExecutor;
+<if(merging)>
+import de.matrixweb.smaller.resource.MergingProcessor;
+<else>
 import de.matrixweb.smaller.resource.Processor;
+<endif>
 import de.matrixweb.smaller.resource.Resource;
 import de.matrixweb.smaller.resource.Type;
 import de.matrixweb.smaller.resource.vfs.VFS;
@@ -13,7 +17,7 @@ import de.matrixweb.smaller.resource.vfs.VFS;
 /**
  *
  */
-public class <uppername>Processor implements Processor {
+public class <uppername>Processor implements <if(merging)>MergingProcessor<else>Processor<endif> {
 
   private NodejsExecutor node;
 
