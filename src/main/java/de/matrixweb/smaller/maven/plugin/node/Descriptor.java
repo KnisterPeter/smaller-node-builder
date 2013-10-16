@@ -43,6 +43,7 @@ public class Descriptor {
   }
 
   /** */
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class DistTags {
 
     @JsonProperty("latest")

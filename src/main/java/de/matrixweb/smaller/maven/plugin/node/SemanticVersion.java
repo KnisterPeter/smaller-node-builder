@@ -16,14 +16,17 @@ class SemanticVersion {
 
   static String getBestMatch(final Collection<String> versions, final String str)
       throws IOException {
-    final String version = str.trim();
-    final Range range = new Range(version);
-
     final List<ParsedVersion> pkgVersions = new ArrayList<ParsedVersion>();
     for (final String dv : versions) {
       pkgVersions.add(ParsedVersion.parse(dv));
     }
     Collections.sort(pkgVersions, Collections.reverseOrder());
+
+    String version = str.trim();
+    if ("".equals(str)) {
+      version = pkgVersions.get(0).toString();
+    }
+    final Range range = new Range(version);
 
     ParsedVersion match = null;
     final Iterator<ParsedVersion> it = pkgVersions.iterator();
