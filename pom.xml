@@ -90,6 +90,11 @@
       <artifactId>stringtemplate</artifactId>
       <version>4.0.2</version>
     </dependency>
+    <dependency>
+      <groupId>org.eclipse.jgit</groupId>
+      <artifactId>org.eclipse.jgit</artifactId>
+      <version>3.1.0.201310021548-r</version>
+    </dependency>
     
     <dependency>
       <groupId>junit</groupId>

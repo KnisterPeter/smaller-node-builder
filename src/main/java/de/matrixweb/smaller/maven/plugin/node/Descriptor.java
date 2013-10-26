@@ -3,22 +3,15 @@ package de.matrixweb.smaller.maven.plugin.node;
 import java.util.Collections;
 import java.util.Map;
 
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
-import org.codehaus.jackson.annotate.JsonProperty;
-
 /**
  * @author markusw
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class Descriptor {
 
-  @JsonProperty("name")
   private String name;
 
-  @JsonProperty("dist-tags")
   private Descriptor.DistTags distTags;
 
-  @JsonProperty("versions")
   private Map<String, Descriptor.Version> versions;
 
   /**
@@ -29,10 +22,26 @@ public class Descriptor {
   }
 
   /**
+   * @param name
+   *          the name to set
+   */
+  public void setName(final String name) {
+    this.name = name;
+  }
+
+  /**
    * @return the distTags
    */
   public Descriptor.DistTags getDistTags() {
     return this.distTags;
+  }
+
+  /**
+   * @param distTags
+   *          the distTags to set
+   */
+  public void setDistTags(final Descriptor.DistTags distTags) {
+    this.distTags = distTags;
   }
 
   /**
@@ -42,11 +51,17 @@ public class Descriptor {
     return this.versions;
   }
 
+  /**
+   * @param versions
+   *          the versions to set
+   */
+  public void setVersions(final Map<String, Descriptor.Version> versions) {
+    this.versions = versions;
+  }
+
   /** */
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class DistTags {
 
-    @JsonProperty("latest")
     private String latest;
 
     /**
@@ -56,27 +71,22 @@ public class Descriptor {
       return this.latest;
     }
 
+    /**
+     * @param latest
+     *          the latest to set
+     */
+    public void setLatest(final String latest) {
+      this.latest = latest;
+    }
+
   }
 
   /** */
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Version {
 
-    @JsonProperty("engine")
-    private Object engine;
-
-    @JsonProperty("dependencies")
     private Map<String, String> dependencies;
 
-    @JsonProperty("dist")
     private Version.Dist dist;
-
-    /**
-     * @return the engine
-     */
-    public Object getEngine() {
-      return this.engine;
-    }
 
     /**
      * @return the dependencies
@@ -88,17 +98,31 @@ public class Descriptor {
     }
 
     /**
+     * @param dependencies
+     *          the dependencies to set
+     */
+    public void setDependencies(final Map<String, String> dependencies) {
+      this.dependencies = dependencies;
+    }
+
+    /**
      * @return the dist
      */
     public Version.Dist getDist() {
       return this.dist;
     }
 
+    /**
+     * @param dist
+     *          the dist to set
+     */
+    public void setDist(final Version.Dist dist) {
+      this.dist = dist;
+    }
+
     /** */
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Dist {
 
-      @JsonProperty("tarball")
       private String tarball;
 
       /**
@@ -106,6 +130,14 @@ public class Descriptor {
        */
       public String getTarball() {
         return this.tarball;
+      }
+
+      /**
+       * @param tarball
+       *          the tarball to set
+       */
+      public void setTarball(final String tarball) {
+        this.tarball = tarball;
       }
 
     }
