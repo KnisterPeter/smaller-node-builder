@@ -45,6 +45,9 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(required = true)
   private List<String> packages;
 
+  @Parameter(alias = "npm-only", defaultValue = "false")
+  private boolean npmOnly;
+
   /**
    * The folder to store the package and its requirements. Defaults to
    * ${basedir}/target/generated-resources/npm-modules.
@@ -130,30 +133,34 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
         new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl"))).add(
             "script", this.script).render());
 
-    final String[] nameParts = this.name.split("-", 2);
-    final String lowername = nameParts[0].toLowerCase();
-    final String uppername = nameParts[0].substring(0, 1).toUpperCase()
-        + nameParts[0].substring(1).toLowerCase();
-    final String nameVersion = this.name;
-    final String uppertype = this.type.toUpperCase();
     final File classbase = new File(this.basedir,
         "target/generated-sources/npm-processor");
-    final File classtarget = new File(classbase, "de/matrixweb/smaller/"
-        + lowername);
-    classbase.mkdirs();
-    FileUtils
-        .write(
-            new File(classtarget, uppername + "Processor.java"),
-            new ST(IOUtils.toString(getClass().getResource(
-                "/Processor.java.tmpl"))).add("lowername", lowername)
-                .add("uppername", uppername).add("name", nameParts[0])
-                .add("nameVersion", nameVersion).add("uppertype", uppertype)
-                .add("merging", this.merging).render());
+    if (!this.npmOnly) {
+      final String[] nameParts = this.name.split("-", 2);
+      final String lowername = nameParts[0].toLowerCase();
+      final String uppername = nameParts[0].substring(0, 1).toUpperCase()
+          + nameParts[0].substring(1).toLowerCase();
+      final String nameVersion = this.name;
+      final String uppertype = this.type.toUpperCase();
+      final File classtarget = new File(classbase, "de/matrixweb/smaller/"
+          + lowername);
+      classbase.mkdirs();
+      FileUtils.write(
+          new File(classtarget, uppername + "Processor.java"),
+          new ST(IOUtils.toString(getClass()
+              .getResource("/Processor.java.tmpl")))
+              .add("lowername", lowername).add("uppername", uppername)
+              .add("name", nameParts[0]).add("nameVersion", nameVersion)
+              .add("uppertype", uppertype).add("merging", this.merging)
+              .render());
+    }
     return classbase.getPath();
   }
 
   private void updateProjectModel(final String javaCodeFolder) {
-    this.project.addCompileSourceRoot(javaCodeFolder);
+    if (!this.npmOnly) {
+      this.project.addCompileSourceRoot(javaCodeFolder);
+    }
     final Resource resource = new Resource();
     resource.setDirectory(this.target.getAbsolutePath());
     this.project.addResource(resource);
