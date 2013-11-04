@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import de.matrixweb.smaller.common.SmallerException;
-import de.matrixweb.smaller.nodejs.NodejsExecutor;
+import de.matrixweb.smaller.nodejs.NodeJsExecutor;
 <if(merging)>
 import de.matrixweb.smaller.resource.MergingProcessor;
 <else>
@@ -19,7 +19,7 @@ import de.matrixweb.vfs.VFS;
  */
 public class <uppername>Processor implements <if(merging)>MergingProcessor<else>Processor<endif> {
 
-  private NodejsExecutor node;
+  private NodeJsExecutor node;
 
   /**
    * @see de.matrixweb.smaller.resource.Processor#supportsType(de.matrixweb.smaller.resource.Type)
@@ -37,13 +37,14 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
   public Resource execute(final VFS vfs, final Resource resource, final Map\<String, String> options) throws IOException {
     if (this.node == null) {
       try {
-        this.node = new NodejsExecutor();
+        this.node = new NodeJsExecutor();
         this.node.addModule(getClass().getClassLoader(), "<nameVersion>");
       } catch (final IOException e) {
         throw new SmallerException("Failed to setup node for <name>", e);
       }
     }
-    return this.node.run(vfs, resource, options);
+    String outfile = this.node.run(vfs, resource != null ? resource.getPath() : null, options);
+    return resource == null || outfile == null ? resource : resource.getResolver().resolve(outfile);
   }
 
   /**
