@@ -38,7 +38,7 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
     if (this.node == null) {
       try {
         this.node = new NodejsExecutor();
-        this.node.addModule(getClass(), "<nameVersion>");
+        this.node.addModule(getClass().getClassLoader(), "<nameVersion>");
       } catch (final IOException e) {
         throw new SmallerException("Failed to setup node for <name>", e);
       }
