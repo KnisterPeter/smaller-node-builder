@@ -16,6 +16,8 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
+import de.matrixweb.smaller.maven.plugin.node.Descriptor.Version;
+
 class PackageInfo {
 
   private static final ObjectMapper OM;
@@ -186,9 +188,13 @@ class PackageInfo {
     if (this.tempLocation != null) {
       FileUtils.copyDirectory(this.tempLocation, pkgDir);
     } else {
-      final InputStream in = get(this.cache, this.log, getDescriptor()
-          .getVersions().get(this.version).getDist().getTarball(),
-          "Downloading");
+      final Version versionDescriptor = getDescriptor().getVersions().get(
+          this.version);
+      if (versionDescriptor == null) {
+        throw new IOException("Version " + this.version + " not found");
+      }
+      final InputStream in = get(this.cache, this.log, versionDescriptor
+          .getDist().getTarball(), "Downloading");
       try {
         Extractor.uncompress(this.name, this.version, this.log, in, pkgDir);
       } finally {
