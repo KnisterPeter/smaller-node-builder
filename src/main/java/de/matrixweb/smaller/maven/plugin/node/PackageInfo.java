@@ -70,6 +70,12 @@ class PackageInfo {
         final CloneCommand clone = Git.cloneRepository();
         clone.setURI(uri).setDirectory(temp).setBranch(branch).setBare(false);
         clone.call().getRepository().close();
+
+        log.debug("Cloned repository from " + input);
+        for (final String file : temp.list()) {
+          log.debug("  ... " + file);
+        }
+
         return createPackageFromTemp(temp, log, cache);
       } catch (final IOException e) {
         FileUtils.deleteDirectory(temp);
