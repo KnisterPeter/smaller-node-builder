@@ -57,11 +57,14 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
 
   private File tempInstall;
 
+  @Parameter(alias = "script-file")
+  private File scriptFile;
+
   /**
    * This script is the main entry-point into the node-module and builds the
    * bridge to the JVM.
    */
-  @Parameter(required = true)
+  @Parameter
   private String script;
 
   /**
@@ -102,6 +105,10 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
    */
   @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
+    if (this.script == null && this.scriptFile == null) {
+      throw new MojoFailureException("Either script or script-file is required");
+    }
+
     this.cache = new NpmCache(this.basedir);
     try {
       this.tempInstall = File.createTempFile("smaller-node-builder-temp",
@@ -128,10 +135,14 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   }
 
   private String writeSources() throws IOException {
-    FileUtils.write(
-        new File(getPackageTarget(), "index.js"),
-        new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl"))).add(
-            "script", this.script).render());
+    if (this.scriptFile != null) {
+      FileUtils.copyFile(this.scriptFile, new File(getPackageTarget(),
+          "index.js"));
+    } else {
+      FileUtils.write(new File(getPackageTarget(), "index.js"),
+          new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl")))
+              .add("script", this.script).render());
+    }
 
     final File classbase = new File(this.basedir,
         "target/generated-sources/npm-processor");
