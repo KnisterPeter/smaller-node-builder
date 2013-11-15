@@ -60,6 +60,9 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(alias = "script-file")
   private File scriptFile;
 
+  @Parameter(alias = "skip-script", defaultValue = "false")
+  private boolean skipScript;
+
   /**
    * This script is the main entry-point into the node-module and builds the
    * bridge to the JVM.
@@ -136,8 +139,10 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
 
   private String writeSources() throws IOException {
     if (this.scriptFile != null) {
-      FileUtils.copyFile(this.scriptFile, new File(getPackageTarget(),
-          "index.js"));
+      if (!this.skipScript) {
+        FileUtils.copyFile(this.scriptFile, new File(getPackageTarget(),
+            "index.js"));
+      }
     } else {
       FileUtils.write(new File(getPackageTarget(), "index.js"),
           new ST(IOUtils.toString(getClass().getResource("/index.js.tmpl")))
