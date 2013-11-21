@@ -23,8 +23,7 @@ class PackageInfo {
   private static final ObjectMapper OM;
   static {
     OM = new ObjectMapper();
-    OM.setDeserializationConfig(OM.getDeserializationConfig().without(
-        Feature.FAIL_ON_UNKNOWN_PROPERTIES));
+    OM.setDeserializationConfig(OM.getDeserializationConfig().without(Feature.FAIL_ON_UNKNOWN_PROPERTIES));
   }
 
   private final String name;
@@ -39,8 +38,7 @@ class PackageInfo {
 
   private final File tempLocation;
 
-  static PackageInfo createPackage(final String input, final Logger log,
-      final NpmCache cache) throws IOException {
+  static PackageInfo createPackage(final String input, final Logger log, final NpmCache cache) throws IOException {
     if (input.startsWith("git:") || input.startsWith("git+")) {
       return fromGit(input, log, cache);
     } else if (input.contains("@")) {
@@ -50,8 +48,7 @@ class PackageInfo {
     }
   }
 
-  private static PackageInfo fromGit(final String input, final Logger log,
-      final NpmCache cache) throws IOException {
+  private static PackageInfo fromGit(final String input, final Logger log, final NpmCache cache) throws IOException {
     try {
       String uri = input;
       if (uri.startsWith("git+")) {
@@ -86,19 +83,16 @@ class PackageInfo {
     }
   }
 
-  private static PackageInfo fromNameVersion(final String input,
-      final Logger log, final NpmCache cache) {
+  private static PackageInfo fromNameVersion(final String input, final Logger log, final NpmCache cache) {
     final int idx = input.indexOf('@');
     if (idx > -1) {
-      return new PackageInfo(input.substring(0, idx), input.substring(idx + 1),
-          null, log, cache);
+      return new PackageInfo(input.substring(0, idx), input.substring(idx + 1), null, log, cache);
     } else {
       return new PackageInfo(input, "", null, log, cache);
     }
   }
 
-  private static PackageInfo fromUrl(final String input, final Logger log,
-      final NpmCache cache) throws IOException {
+  private static PackageInfo fromUrl(final String input, final Logger log, final NpmCache cache) throws IOException {
     final InputStream in = get(cache, log, input, "Downloading .tar.gz");
     try {
       final File temp = File.createTempFile("smaller-node", ".dir");
@@ -106,7 +100,21 @@ class PackageInfo {
         temp.delete();
         temp.mkdirs();
         Extractor.uncompress(input, log, in, temp);
-        return createPackageFromTemp(temp, log, cache);
+
+        File dir = temp;
+        if (!new File(dir, "package.json").exists()) {
+          for (File sub : temp.listFiles()) {
+            if (new File(sub, "package.json").exists()) {
+              dir = sub;
+              break;
+            }
+          }
+        }
+        if (!new File(dir, "package.json").exists()) {
+          throw new IOException("Failed to find package.json in tar.gz");
+        }
+
+        return createPackageFromTemp(dir, log, cache);
       } catch (final IOException e) {
         FileUtils.deleteDirectory(temp);
         throw e;
@@ -116,14 +124,14 @@ class PackageInfo {
     }
   }
 
-  private static PackageInfo createPackageFromTemp(final File temp,
-      final Logger log, final NpmCache cache) throws IOException {
+  private static PackageInfo createPackageFromTemp(final File temp, final Logger log, final NpmCache cache)
+      throws IOException {
     final PackageJson json = getPackageJson(temp);
     return new PackageInfo(json.getName(), json.getVersion(), temp, log, cache);
   }
 
-  private static InputStream get(final NpmCache cache, final Logger log,
-      final String url, final String message) throws IOException {
+  private static InputStream get(final NpmCache cache, final Logger log, final String url, final String message)
+      throws IOException {
     InputStream in = cache.get(url);
     if (in == null) {
       log.info(message + " " + url);
@@ -138,8 +146,7 @@ class PackageInfo {
     return OM.readValue(new File(dir, "package.json"), PackageJson.class);
   }
 
-  PackageInfo(final String name, final String version, final File tempLocation,
-      final Logger log, final NpmCache cache) {
+  PackageInfo(final String name, final String version, final File tempLocation, final Logger log, final NpmCache cache) {
     this.name = name;
     this.version = version;
     this.tempLocation = tempLocation;
@@ -157,8 +164,7 @@ class PackageInfo {
 
   private Descriptor getDescriptor() throws IOException {
     if (this.descriptor == null) {
-      final InputStream in = get(this.cache, this.log,
-          "http://registry.npmjs.org/" + this.name, "Requesting");
+      final InputStream in = get(this.cache, this.log, "http://registry.npmjs.org/" + this.name, "Requesting");
       try {
         this.descriptor = OM.readValue(in, Descriptor.class);
       } finally {
@@ -194,13 +200,11 @@ class PackageInfo {
     if (this.tempLocation != null) {
       FileUtils.copyDirectory(this.tempLocation, pkgDir);
     } else {
-      final Version versionDescriptor = getDescriptor().getVersions().get(
-          this.version);
+      final Version versionDescriptor = getDescriptor().getVersions().get(this.version);
       if (versionDescriptor == null) {
         throw new IOException("Version " + this.version + " not found");
       }
-      final InputStream in = get(this.cache, this.log, versionDescriptor
-          .getDist().getTarball(), "Downloading");
+      final InputStream in = get(this.cache, this.log, versionDescriptor.getDist().getTarball(), "Downloading");
       try {
         Extractor.uncompress(this.name, this.version, this.log, in, pkgDir);
       } finally {
@@ -209,29 +213,22 @@ class PackageInfo {
     }
   }
 
-  private void installDependencies(final File root,
-      final Map<String, String> dependencies, final File pkgDir)
+  private void installDependencies(final File root, final Map<String, String> dependencies, final File pkgDir)
       throws IOException {
     for (final Entry<String, String> dependency : dependencies.entrySet()) {
       final String pkgName = dependency.getKey();
       final String requiredVersion = dependency.getValue();
-      this.log.debug("Looking for " + pkgName + '@' + requiredVersion
-          + " in parent folders of " + pkgDir);
+      this.log.debug("Looking for " + pkgName + '@' + requiredVersion + " in parent folders of " + pkgDir);
       final String foundVersion = findInstalledVersion(root, pkgDir, pkgName);
-      if (foundVersion == null
-          || !new Range(requiredVersion).satisfies(ParsedVersion
-              .parse(foundVersion))) {
-        final PackageInfo depPkg = new PackageInfo(pkgName, "", null, this.log,
-            this.cache);
-        depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
-            .getVersions().keySet(), requiredVersion));
+      if (foundVersion == null || !new Range(requiredVersion).satisfies(ParsedVersion.parse(foundVersion))) {
+        final PackageInfo depPkg = new PackageInfo(pkgName, "", null, this.log, this.cache);
+        depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor().getVersions().keySet(), requiredVersion));
         depPkg.install(root, new File(pkgDir, "node_modules"));
       }
     }
   }
 
-  private String findInstalledVersion(final File root, final File dir,
-      final String pkgName) throws IOException {
+  private String findInstalledVersion(final File root, final File dir, final String pkgName) throws IOException {
     String version = null;
 
     final File nodeModulesDir = new File(dir, "node_modules");
