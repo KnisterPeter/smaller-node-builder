@@ -60,8 +60,15 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(alias = "script-file")
   private File scriptFile;
 
-  @Parameter(alias = "skip-script", defaultValue = "false")
-  private boolean skipScript;
+  /**
+   * @deprecated Use {@link #useRuntimeScript} instead
+   */
+  @Deprecated
+  @Parameter(alias = "skip-script")
+  private Boolean skipScript;
+
+  @Parameter(alias = "use-runtime-script", defaultValue = "false")
+  private boolean useRuntimeScript;
 
   /**
    * This script is the main entry-point into the node-module and builds the
@@ -77,6 +84,16 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   private boolean forceUpdate;
 
   private NpmCache cache;
+
+  /**
+   * @param skipScript
+   *          the skipScript to set
+   * @deprecated Use <code>use-runtime-script</code> instead
+   */
+  @Deprecated
+  public void setSkipScript(final boolean skipScript) {
+    this.useRuntimeScript = skipScript;
+  }
 
   /**
    * @return the packages
@@ -139,7 +156,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
 
   private String writeSources() throws IOException {
     if (this.scriptFile != null) {
-      if (!this.skipScript) {
+      if (!this.useRuntimeScript) {
         FileUtils.copyFile(this.scriptFile, new File(getPackageTarget(),
             "index.js"));
       }
@@ -160,6 +177,18 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
       final String uppertype = this.type.toUpperCase();
       final File classtarget = new File(classbase, "de/matrixweb/smaller/"
           + lowername);
+      String scriptName = "null";
+      if (this.useRuntimeScript && this.scriptFile != null) {
+        scriptName = this.scriptFile.getAbsolutePath();
+        if (scriptName.startsWith(this.basedir.getAbsolutePath() + '/')) {
+          scriptName = scriptName
+              .substring((this.basedir.getAbsolutePath() + '/').length());
+        }
+        if (scriptName.startsWith("src/main/resources/")) {
+          scriptName = scriptName.substring("src/main/resources/".length());
+        }
+        scriptName = '"' + scriptName + '"';
+      }
       classbase.mkdirs();
       FileUtils.write(
           new File(classtarget, uppername + "Processor.java"),
@@ -168,7 +197,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
               .add("lowername", lowername).add("uppername", uppername)
               .add("name", nameParts[0]).add("nameVersion", nameVersion)
               .add("uppertype", uppertype).add("merging", this.merging)
-              .render());
+              .add("scriptName", scriptName).render());
     }
     return classbase.getPath();
   }
