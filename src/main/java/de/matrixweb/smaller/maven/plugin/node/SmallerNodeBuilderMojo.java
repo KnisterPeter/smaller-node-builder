@@ -188,6 +188,7 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
           scriptName = scriptName.substring("src/main/resources/".length());
         }
         scriptName = '"' + scriptName + '"';
+        getLog().info("Using runtime script: " + scriptName);
       }
       classbase.mkdirs();
       FileUtils.write(
