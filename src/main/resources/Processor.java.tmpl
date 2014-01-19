@@ -13,6 +13,7 @@ import de.matrixweb.smaller.resource.Processor;
 import de.matrixweb.smaller.resource.Resource;
 import de.matrixweb.smaller.resource.Type;
 import de.matrixweb.vfs.VFS;
+import de.matrixweb.vfs.VFile;
 
 /**
  *
@@ -44,6 +45,12 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
       }
     }
     String outfile = this.node.run(vfs, resource != null ? resource.getPath() : null, options);
+    if (outfile != null) {
+      final VFile file = vfs.find('/' + outfile);
+      if (!file.exists()) {
+        throw new SmallerException("<uppername>Processor result does not exists");
+      }
+    }
     return resource == null || outfile == null ? resource : resource.getResolver().resolve(outfile);
   }
 
