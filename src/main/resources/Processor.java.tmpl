@@ -51,7 +51,7 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
         throw new SmallerException("<uppername>Processor result does not exists");
       }
     }
-    return resource == null || outfile == null ? resource : resource.getResolver().resolve(outfile);
+    return resource == null || outfile == null ? resource : resource.getResolver().resolve('/' + outfile);
   }
 
   /**
