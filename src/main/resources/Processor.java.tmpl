@@ -35,7 +35,7 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
    *      de.matrixweb.smaller.resource.Resource, java.util.Map)
    */
   @Override
-  public Resource execute(final VFS vfs, final Resource resource, final Map\<String, String> options) throws IOException {
+  public Resource execute(final VFS vfs, final Resource resource, final Map\<String, Object> options) throws IOException {
     if (this.node == null) {
       try {
         this.node = new NodeJsExecutor();
