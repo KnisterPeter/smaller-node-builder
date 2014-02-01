@@ -110,7 +110,7 @@ class PackageInfo {
 
         File dir = temp;
         if (!new File(dir, "package.json").exists()) {
-          for (File sub : temp.listFiles()) {
+          for (final File sub : temp.listFiles()) {
             if (new File(sub, "package.json").exists()) {
               dir = sub;
               break;
@@ -224,9 +224,9 @@ class PackageInfo {
   }
 
   private InputStream getTarball(final Version version) throws IOException {
-    File local = new File(System.getProperty("user.home"), ".npm/" + name + "/"
-        + this.version + "/package.tgz");
-    log.debug("Check local .npm for " + local);
+    final File local = new File(System.getProperty("user.home"), ".npm/"
+        + this.name + "/" + this.version + "/package.tgz");
+    this.log.debug("Check local .npm for " + local);
     if (local.exists()) {
       return new FileInputStream(local);
     }
@@ -243,16 +243,25 @@ class PackageInfo {
       this.log.debug("Looking for " + pkgName + '@' + requiredVersion
           + " in parent folders of " + pkgDir);
       final String foundVersion = findInstalledVersion(root, pkgDir, pkgName);
-      if (foundVersion == null
-          || !new Range(requiredVersion).satisfies(ParsedVersion
-              .parse(foundVersion))) {
-        final PackageInfo depPkg = new PackageInfo(pkgName, "", null, this.log,
-            this.cache);
-        depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
-            .getVersions().keySet(), requiredVersion));
+      if (foundVersion == null || !satisfies(requiredVersion, foundVersion)) {
+        PackageInfo depPkg;
+        try {
+          depPkg = new PackageInfo(pkgName, "", null, this.log, this.cache);
+          depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
+              .getVersions().keySet(), requiredVersion));
+        } catch (final ParseException e) {
+          // Try git-version or url
+          depPkg = createPackage(requiredVersion, this.log, this.cache);
+        }
         depPkg.install(root, new File(pkgDir, "node_modules"));
       }
     }
+  }
+
+  private boolean satisfies(final String requiredVersion,
+      final String foundVersion) {
+    final Range range = new Range(requiredVersion);
+    return range.satisfies(ParsedVersion.parse(foundVersion));
   }
 
   private String findInstalledVersion(final File root, final File dir,

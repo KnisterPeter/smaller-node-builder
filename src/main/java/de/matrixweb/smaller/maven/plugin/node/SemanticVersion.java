@@ -110,6 +110,18 @@ class ParsedVersion implements Comparable<ParsedVersion> {
 
 }
 
+@SuppressWarnings("serial")
+class ParseException extends RuntimeException {
+
+  /**
+   * @param message
+   */
+  public ParseException(final String message) {
+    super(message);
+  }
+
+}
+
 class Range {
 
   private enum Op {
@@ -173,7 +185,11 @@ class Range {
       } else if (verStr.contains("x") || verStr.contains("X")) {
         this.opMap.putAll(new Range(createXVersion(verStr)).opMap);
       } else {
-        this.opMap.put(ParsedVersion.parse(verStr), Op.lookup(op));
+        final ParsedVersion version = ParsedVersion.parse(verStr);
+        if (version == null) {
+          throw new ParseException(verStr);
+        }
+        this.opMap.put(version, Op.lookup(op));
       }
     }
   }
