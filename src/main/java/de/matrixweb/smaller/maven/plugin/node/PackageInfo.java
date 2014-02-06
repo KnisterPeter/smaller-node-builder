@@ -235,8 +235,12 @@ class PackageInfo {
         IOUtils.closeQuietly(in);
       }
     } catch (final IOException e) {
-      this.log.info("Retry with redownloading and extracting");
-      downloadAndExtract(versionDescriptor, pkgDir, false, true);
+      if (retry) {
+        this.log.info("Retry with redownloading and extracting");
+        downloadAndExtract(versionDescriptor, pkgDir, false, true);
+      } else {
+        throw e;
+      }
     }
   }
 
