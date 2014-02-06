@@ -139,7 +139,13 @@ class PackageInfo {
 
   private static InputStream get(final NpmCache cache, final Logger log,
       final String url, final String message) throws IOException {
-    InputStream in = cache.get(url);
+    return get(cache, false, log, url, message);
+  }
+
+  private static InputStream get(final NpmCache cache,
+      final boolean forceUpdate, final Logger log, final String url,
+      final String message) throws IOException {
+    InputStream in = cache.get(url, forceUpdate);
     if (in == null) {
       log.info(message + " " + url);
       final Response response = Request.Get(url).execute();
@@ -214,16 +220,28 @@ class PackageInfo {
       if (versionDescriptor == null) {
         throw new IOException("Version " + this.version + " not found");
       }
-      final InputStream in = getTarball(versionDescriptor);
+      downloadAndExtract(versionDescriptor, pkgDir, true, false);
+    }
+  }
+
+  private void downloadAndExtract(final Version versionDescriptor,
+      final File pkgDir, final boolean retry, final boolean forceUpdate)
+      throws IOException {
+    try {
+      final InputStream in = getTarball(versionDescriptor, forceUpdate);
       try {
         Extractor.uncompress(this.name, this.version, this.log, in, pkgDir);
       } finally {
         IOUtils.closeQuietly(in);
       }
+    } catch (final IOException e) {
+      this.log.info("Retry with redownloading and extracting");
+      downloadAndExtract(versionDescriptor, pkgDir, false, true);
     }
   }
 
-  private InputStream getTarball(final Version version) throws IOException {
+  private InputStream getTarball(final Version version,
+      final boolean forceUpdate) throws IOException {
     final File local = new File(System.getProperty("user.home"), ".npm/"
         + this.name + "/" + this.version + "/package.tgz");
     this.log.debug("Check local .npm for " + local);

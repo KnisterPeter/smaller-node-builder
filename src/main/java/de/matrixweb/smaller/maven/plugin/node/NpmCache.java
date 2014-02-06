@@ -28,9 +28,18 @@ class NpmCache {
   }
 
   InputStream get(final String url) throws IOException {
+    return get(url, false);
+  }
+
+  InputStream get(final String url, final boolean forceUpdate)
+      throws IOException {
     final File entry = entry(url);
     if (entry.exists()) {
-      return new FileInputStream(entry);
+      if (forceUpdate) {
+        entry.delete();
+      } else {
+        return new FileInputStream(entry);
+      }
     }
     return null;
   }

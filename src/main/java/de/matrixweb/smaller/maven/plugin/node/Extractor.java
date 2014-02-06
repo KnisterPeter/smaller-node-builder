@@ -33,6 +33,9 @@ class Extractor {
       throw new IOException("Failed to decompress " + name, e);
     } catch (final ArchiveException e) {
       throw new IOException("Failed to decompress " + name, e);
+    } catch (final IOException e) {
+      log.info("Failed to decompress " + name);
+      throw e;
     }
   }
 
