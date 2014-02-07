@@ -230,7 +230,8 @@ class PackageInfo {
     try {
       final InputStream in = getTarball(versionDescriptor, forceUpdate);
       try {
-        Extractor.uncompress(this.name, this.version, this.log, in, pkgDir);
+        Extractor.uncompress(this.name, this.version, this.log, in, pkgDir,
+            forceUpdate);
       } finally {
         IOUtils.closeQuietly(in);
       }

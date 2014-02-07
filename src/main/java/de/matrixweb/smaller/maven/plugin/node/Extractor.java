@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
@@ -22,13 +23,25 @@ class Extractor {
   static void uncompress(final String name, final String version,
       final Logger log, final InputStream in, final File target)
       throws IOException {
-    uncompress(name + '@' + version, log, in, target);
+    uncompress(name, version, log, in, target, false);
+  }
+
+  static void uncompress(final String name, final String version,
+      final Logger log, final InputStream in, final File target,
+      final boolean useJavaGzip) throws IOException {
+    uncompress(name + '@' + version, log, in, target, useJavaGzip);
   }
 
   static void uncompress(final String name, final Logger log,
       final InputStream in, final File target) throws IOException {
+    uncompress(name, log, in, target, false);
+  }
+
+  static void uncompress(final String name, final Logger log,
+      final InputStream in, final File target, final boolean useJavaGzip)
+      throws IOException {
     try {
-      uncompress(log, in, target);
+      uncompress(log, in, target, useJavaGzip);
     } catch (final CompressorException e) {
       throw new IOException("Failed to decompress " + name, e);
     } catch (final ArchiveException e) {
@@ -40,15 +53,19 @@ class Extractor {
   }
 
   static void uncompress(final Logger log, final InputStream in,
-      final File target) throws IOException, CompressorException,
-      ArchiveException {
-    final CompressorStreamFactory csf = new CompressorStreamFactory();
-    csf.setDecompressConcatenated(true);
-    final CompressorInputStream cin = csf
-        .createCompressorInputStream(new BufferedInputStream(in));
+      final File target, final boolean useJavaGzip) throws IOException,
+      CompressorException, ArchiveException {
     final File temp = File.createTempFile("smaller-npm", ".tar");
     try {
-      FileUtils.copyInputStreamToFile(cin, temp);
+      if (!useJavaGzip) {
+        final CompressorStreamFactory csf = new CompressorStreamFactory();
+        csf.setDecompressConcatenated(true);
+        final CompressorInputStream cin = csf
+            .createCompressorInputStream(new BufferedInputStream(in));
+        FileUtils.copyInputStreamToFile(cin, temp);
+      } else {
+        FileUtils.copyInputStreamToFile(new GZIPInputStream(in), temp);
+      }
 
       final FileInputStream fin = new FileInputStream(temp);
       try {
