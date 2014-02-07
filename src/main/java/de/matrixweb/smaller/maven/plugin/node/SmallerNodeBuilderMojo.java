@@ -83,6 +83,13 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
   @Parameter(defaultValue = "false")
   private boolean forceUpdate;
 
+  /**
+   * Set this to true to delete 'test', 'tests', 'example' and 'examples'
+   * folders.
+   */
+  @Parameter(alias = "delete-test-and-example", defaultValue = "true")
+  private boolean deleteTestAndExampleFolders;
+
   private NpmCache cache;
 
   /**
@@ -140,7 +147,8 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
           getLog().info("Installing " + pkgSpec);
           final PackageInfo pkg = PackageInfo.createPackage(pkgSpec,
               new MavenLogger(), this.cache);
-          pkg.install(this.tempInstall, this.tempInstall);
+          pkg.install(this.tempInstall, this.tempInstall,
+              this.deleteTestAndExampleFolders);
           FileUtils.copyDirectory(this.tempInstall, new File(
               getPackageTarget(), "node_modules"));
         }

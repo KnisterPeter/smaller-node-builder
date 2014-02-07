@@ -196,14 +196,22 @@ class PackageInfo {
     return getDescriptor().getVersions().get(this.version).getDependencies();
   }
 
-  void install(final File root, final File installDir) throws IOException {
+  void install(final File root, final File installDir,
+      final boolean deleteTestAndExampleFolders) throws IOException {
     if ("".equals(this.version)) {
       this.version = getDescriptor().getDistTags().getLatest();
     }
     final File pkgDir = new File(installDir, this.name);
     try {
       installSources(pkgDir);
-      installDependencies(root, getDependencies(), pkgDir);
+      if (deleteTestAndExampleFolders) {
+        FileUtils.deleteDirectory(new File(pkgDir, "test"));
+        FileUtils.deleteDirectory(new File(pkgDir, "tests"));
+        FileUtils.deleteDirectory(new File(pkgDir, "example"));
+        FileUtils.deleteDirectory(new File(pkgDir, "examples"));
+      }
+      installDependencies(root, getDependencies(), pkgDir,
+          deleteTestAndExampleFolders);
     } finally {
       if (this.tempLocation != null) {
         FileUtils.deleteDirectory(this.tempLocation);
@@ -258,8 +266,8 @@ class PackageInfo {
   }
 
   private void installDependencies(final File root,
-      final Map<String, String> dependencies, final File pkgDir)
-      throws IOException {
+      final Map<String, String> dependencies, final File pkgDir,
+      final boolean deleteTestAndExampleFolders) throws IOException {
     for (final Entry<String, String> dependency : dependencies.entrySet()) {
       final String pkgName = dependency.getKey();
       final String requiredVersion = dependency.getValue();
@@ -276,7 +284,8 @@ class PackageInfo {
           // Try git-version or url
           depPkg = createPackage(requiredVersion, this.log, this.cache);
         }
-        depPkg.install(root, new File(pkgDir, "node_modules"));
+        depPkg.install(root, new File(pkgDir, "node_modules"),
+            deleteTestAndExampleFolders);
       }
     }
   }

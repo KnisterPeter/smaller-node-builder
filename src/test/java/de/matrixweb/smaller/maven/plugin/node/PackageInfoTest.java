@@ -52,7 +52,7 @@ public class PackageInfoTest {
 
     final PackageInfo pkg = PackageInfo.createPackage("file@0.2.1",
         this.logger, this.cache);
-    pkg.install(this.install, this.install);
+    pkg.install(this.install, this.install, false);
 
     assertInstallDir();
   }
@@ -67,7 +67,7 @@ public class PackageInfoTest {
     final PackageInfo pkg = PackageInfo.createPackage(
         "git://github.com/aconbere/node-file-utils.git#master", this.logger,
         this.cache);
-    pkg.install(this.install, this.install);
+    pkg.install(this.install, this.install, false);
 
     assertInstallDir();
   }
@@ -82,7 +82,7 @@ public class PackageInfoTest {
     final PackageInfo pkg = PackageInfo.createPackage(
         "http://registry.npmjs.org/file/-/file-0.2.1.tgz", this.logger,
         this.cache);
-    pkg.install(this.install, this.install);
+    pkg.install(this.install, this.install, false);
 
     assertInstallDir();
   }
