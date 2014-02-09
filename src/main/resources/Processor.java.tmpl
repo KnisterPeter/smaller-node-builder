@@ -20,7 +20,23 @@ import de.matrixweb.vfs.VFile;
  */
 public class <uppername>Processor implements <if(merging)>MergingProcessor<else>Processor<endif> {
 
+  private String version;
+
   private NodeJsExecutor node;
+
+  /**
+   *
+   */
+  public <uppername>Processor() {
+    this("<version>");
+  }
+
+  /**
+   * @param version
+   */
+  public <uppername>Processor(String version) {
+    this.version = version;
+  }
 
   /**
    * @see de.matrixweb.smaller.resource.Processor#supportsType(de.matrixweb.smaller.resource.Type)
@@ -39,7 +55,7 @@ public class <uppername>Processor implements <if(merging)>MergingProcessor<else>
     if (this.node == null) {
       try {
         this.node = new NodeJsExecutor();
-        this.node.setModule(getClass(), "<nameVersion>", <scriptName>);
+        this.node.setModule(getClass(), "<name>-" + this.version, <scriptName>);
       } catch (final IOException e) {
         this.node = null;
         throw new SmallerException("Failed to setup node for <name>", e);

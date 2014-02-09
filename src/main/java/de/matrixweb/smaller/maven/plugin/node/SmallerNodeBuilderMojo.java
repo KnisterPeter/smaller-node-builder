@@ -205,8 +205,9 @@ public class SmallerNodeBuilderMojo extends AbstractMojo {
               .getResource("/Processor.java.tmpl")))
               .add("lowername", lowername).add("uppername", uppername)
               .add("name", nameParts[0]).add("nameVersion", nameVersion)
-              .add("uppertype", uppertype).add("merging", this.merging)
-              .add("scriptName", scriptName).render());
+              .add("version", nameParts[1]).add("uppertype", uppertype)
+              .add("merging", this.merging).add("scriptName", scriptName)
+              .render());
     }
     return classbase.getPath();
   }
