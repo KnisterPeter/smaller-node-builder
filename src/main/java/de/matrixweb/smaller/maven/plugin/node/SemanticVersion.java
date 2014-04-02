@@ -163,7 +163,7 @@ class Range {
     }
   }
 
-  private static final String OPS = "~|<|<=|=|>=|>";
+  private static final String OPS = "\\^|~|<|<=|=|>=|>";
 
   private static final Pattern OP_MATCH = Pattern.compile("^(" + OPS
       + ")?\\s?(.*)$");
@@ -179,7 +179,10 @@ class Range {
         throw new IllegalArgumentException(str);
       }
       final String verStr = matcher.group(2);
-      final String op = matcher.group(1);
+      String op = matcher.group(1);
+      if ("^".equals(op)) {
+        op = "=";
+      }
       if ("~".equals(op) && !(verStr.contains("x") || verStr.contains("X"))) {
         this.opMap.putAll(new Range(createTildeVersion(verStr)).opMap);
       } else if (verStr.contains("x") || verStr.contains("X")) {

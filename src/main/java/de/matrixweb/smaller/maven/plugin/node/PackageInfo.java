@@ -274,18 +274,24 @@ class PackageInfo {
       this.log.debug("Looking for " + pkgName + '@' + requiredVersion
           + " in parent folders of " + pkgDir);
       final String foundVersion = findInstalledVersion(root, pkgDir, pkgName);
-      if (foundVersion == null || !satisfies(requiredVersion, foundVersion)) {
-        PackageInfo depPkg;
-        try {
-          depPkg = new PackageInfo(pkgName, "", null, this.log, this.cache);
-          depPkg.setVersion(SemanticVersion.getBestMatch(depPkg.getDescriptor()
-              .getVersions().keySet(), requiredVersion));
-        } catch (final ParseException e) {
-          // Try git-version or url
-          depPkg = createPackage(requiredVersion, this.log, this.cache);
+      try {
+        if (foundVersion == null || !satisfies(requiredVersion, foundVersion)) {
+          PackageInfo depPkg;
+          try {
+            depPkg = new PackageInfo(pkgName, "", null, this.log, this.cache);
+            depPkg.setVersion(SemanticVersion.getBestMatch(depPkg
+                .getDescriptor().getVersions().keySet(), requiredVersion));
+          } catch (final ParseException e) {
+            // Try git-version or url
+            depPkg = createPackage(requiredVersion, this.log, this.cache);
+          }
+          depPkg.install(root, new File(pkgDir, "node_modules"),
+              deleteTestAndExampleFolders);
         }
-        depPkg.install(root, new File(pkgDir, "node_modules"),
-            deleteTestAndExampleFolders);
+      } catch (IOException e) {
+        throw new IOException("Failed to install dependecy for " + pkgName + " version " + requiredVersion, e);
+      } catch (ParseException e) {
+        throw new IOException("Failed to find dependency " + pkgName + " version " + requiredVersion, e);
       }
     }
   }
